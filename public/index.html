@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Forte · Salud y Seguridad</title><link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <aside><a class="brand" href="/">F<span>FORTE</span></a><p>ESPACIO DE TRABAJO</p><strong>▦ &nbsp; Salud y Seguridad</strong><div class="aside-note">Seguimiento de conversaciones<br>y próximas acciones</div></aside>
+  <main>
+    <header><div class="breadcrumb">Fortescue / Salud y Seguridad</div><span class="private">Espacio personal</span></header>
+    <section class="heading"><div><p class="eyebrow">TU TRABAJO, EN ORDEN</p><h1>Pendientes H&S</h1><p>Revisá lo que necesita una respuesta y seguí cada acción hasta su cierre.</p></div><button id="sync">↻ &nbsp; Actualizar ahora</button></section>
+    <div id="notice" role="status" aria-live="polite">Consultando el estado del tablero…</div>
+    <form id="login" hidden><label>Clave de acceso <input id="token" type="password" autocomplete="current-password" required></label><button>Ingresar</button></form>
+    <section class="metrics" aria-label="Resumen"><div><span>Pendientes</span><b id="pending">0</b></div><div><span>Por confirmar</span><b id="confirm">0</b></div><div><span>En curso</span><b id="active">0</b></div><div><span>Completados</span><b id="done">0</b></div></section>
+    <div class="toolbar"><div class="tabs"><button id="boardView" class="selected">Tablero</button><button id="listView">Lista</button></div><label class="search">Buscar <input id="search" type="search" placeholder="Asunto, remitente o responsable"></label><label>Prioridad <select id="priority"><option value="">Todas</option><option>Gerencia</option><option>Equipo interno</option><option>Contratistas</option><option>Sin clasificar</option></select></label></div>
+    <p id="freshness" class="freshness"></p>
+    <section id="tasks" class="board" aria-label="Tareas"></section>
+    <footer>Los correos nuevos requieren revisión humana. Una respuesta enviada no confirma la ejecución de una acción.</footer>
+  </main>
+  <dialog id="detail"><form id="edit"><div class="dialog-top"><span>DETALLE DE LA CONVERSACIÓN</span><button type="button" id="close" aria-label="Cerrar">✕</button></div><h2 id="subject"></h2><p id="sender"></p><p id="preview" class="preview"></p><a id="source" target="_blank" rel="noopener noreferrer">Abrir en Outlook ↗</a><div class="form-grid"><label>Estado<select id="status"><option>Pendiente</option><option>Por confirmar</option><option>En curso</option><option>Completado</option></select></label><label>Prioridad<select id="editPriority"><option>Gerencia</option><option>Equipo interno</option><option>Contratistas</option><option>Sin clasificar</option></select></label></div><label>Responsable<input id="owner" maxlength="10000"></label><label>Notas y próxima acción<textarea id="notes" rows="3" maxlength="10000"></textarea></label><label>Borrador de respuesta · revisión humana<textarea id="reply" rows="4" maxlength="10000" placeholder="Escribí el borrador. Esta versión no genera ni envía respuestas automáticamente."></textarea></label><label class="check"><input type="checkbox" id="reviewed"> Revisé la última actualización de esta conversación</label><p id="saveError" role="alert"></p><button id="save">Guardar cambios</button></form></dialog>
+  <script type="module" src="/app.js"></script>
+</body></html>
