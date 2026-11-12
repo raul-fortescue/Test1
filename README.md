@@ -1,66 +1,71 @@
-# Forte · H&S Workspace
+# Forte · H&S Workspace local
 
-Tablero personal para revisar conversaciones de Outlook y seguir próximas acciones. Node.js 24.10 o posterior, sin dependencias externas, Python ni Ollama. Interfaz en español, vistas de tablero/lista y almacenamiento SQLite en el servidor.
+Tablero personal de pendientes de Outlook que funciona **solo en tu computadora**. La página y la base de datos se ejecutan en el equipo; GitHub guarda únicamente el código. No necesita hosting, Azure App Service, Docker, Python ni Ollama.
 
-## Inicio local
+## Inicio en Windows
 
-```sh
-cd /workspace/Test1
-npm start
-```
+1. Instalá **Node.js 24.10 o posterior** desde [nodejs.org](https://nodejs.org), respetando las políticas de tu equipo.
+2. En [GitHub](https://github.com/raul-fortescue/Test1), seleccioná **Code → Download ZIP** y extraé todos los archivos en una carpeta local con permisos de escritura. También podés clonar el repositorio.
+3. Hacé doble clic en **`Iniciar-HYS.cmd`**. Inicia el servidor local y abre el navegador cuando está listo. Mantené abierta la ventana mientras lo uses; cerrala para detenerlo.
 
-En otro equipo, usá la carpeta donde hayas clonado este repositorio. Abrí el puerto 3000 en tu navegador local. No requiere `npm install` ni compilar. `npm test` ejecuta las pruebas de persistencia, sincronización y API HTTP. No crees worktrees para tareas habituales: cada tarea en la nube ya está aislada; usá el checkout existente.
+No requiere instalar paquetes, compilar ni cambiar la política de PowerShell. Si no se abre el navegador, usá la dirección indicada en la ventana (por defecto `http://127.0.0.1:3000`). Si el puerto está ocupado, cerrá una instancia anterior del tablero o elegí otro `PORT` en `.env`; no detengas servicios ajenos.
 
-Sin configuración de Microsoft 365, la aplicación inicia vacía y muestra **Conexión pendiente**. No tiene datos ficticios ni reconstruye los registros históricos del PDF. Para recuperar estados, notas y respuestas anteriores hacen falta los JSON/Excel originales y un importador de migración adaptado a su estructura; no están incluidos en el PDF.
+El primer inicio funciona sin configurar Outlook: muestra el tablero vacío y **Conexión con Outlook pendiente**. No se incluyen datos ficticios ni registros reconstruidos del PDF.
 
-## Conectar Outlook (requiere TI de Microsoft 365)
+## Conectar Outlook
 
-1. Registrar una aplicación de un solo tenant en Microsoft Entra ID y configurar autenticación de aplicación para Microsoft Graph.
-2. Autorizar exclusivamente lectura de correo para el buzón elegido. La API utilizada requiere `Mail.Read` de aplicación o el rol equivalente mediante Exchange Online Application RBAC. TI debe restringir el acceso al buzón autorizado mediante Application RBAC o una política de acceso compatible; los permisos de Entra sin restricciones pueden conceder acceso a más buzones. No se necesita `Mail.Send` ni permisos de escritura. TI debe verificar el alcance efectivo antes de conectar datos reales.
-3. Copiar `.env.example` a `.env` o configurar las variables en el gestor de secretos del proveedor. Completar `MS_TENANT_ID`, `MS_CLIENT_ID`, `MS_CLIENT_SECRET` y `MS_MAILBOX`. Nunca cargar secretos en GitHub ni pegarlos en un chat. Rotar el secreto antes de su vencimiento.
-4. Reiniciar `npm start`. La primera sincronización comienza automáticamente; el botón **Actualizar ahora** también ejecuta la consulta. Un mensaje de error no adelanta el último corte de revisión.
+Que la aplicación sea local no le concede acceso automático al correo corporativo. La conexión actual usa Microsoft Graph y requiere autorización de Microsoft 365 por TI; **no requiere alojar la página en Azure**.
 
-Destinos HTTPS necesarios: `login.microsoftonline.com` y `graph.microsoft.com`. Node usa el proxy heredado con `--use-env-proxy`; se conserva la verificación TLS. Las variables configuradas en el servidor nunca se entregan al navegador.
+1. Pedí a TI un registro de aplicación de un solo tenant autorizado para leer únicamente tu buzón mediante Graph. Esta versión usa autenticación de aplicación con identificador y secreto.
+2. TI debe limitar y verificar el alcance del buzón mediante Exchange Online Application RBAC o una política de acceso compatible. No autorizar lectura irrestricta de todos los buzones. No utiliza permisos de envío ni escritura.
+3. Copiá `.env.example` como `.env` y completá `MS_TENANT_ID`, `MS_CLIENT_ID`, `MS_CLIENT_SECRET` y `MS_MAILBOX` con la configuración aprobada. No subas ese archivo a GitHub ni compartas sus valores por chat. El secreto queda en tu computadora; protegelo con los permisos de tu cuenta. TI debe aprobar su uso local y rotarlo antes de su vencimiento.
+4. Reiniciá el tablero. Consulta automáticamente y mediante **Actualizar ahora**. Una consulta fallida no adelanta el último corte de revisión.
 
-### Qué sincroniza esta versión
+Todavía no implementa inicio de sesión delegado de usuario. Si TI no permite secretos de aplicación en el equipo, habrá que adaptar la autenticación antes de conectar el correo; el tablero puede seguir siendo local.
 
-- Solo **Bandeja de entrada** del buzón indicado. Primera consulta: últimos 30 días. Después consulta desde el último corte exitoso con cinco minutos de solapamiento. No lee adjuntos, subcarpetas, enviados ni correos movidos fuera de la bandeja antes de la consulta.
-- Consulta automática cada cinco minutos (configurable, mínimo un minuto). El navegador consulta el servidor cada 15 segundos. Es actualización periódica, **no tiempo real mediante webhooks**. El servidor debe permanecer ejecutándose.
-- Agrupa por `conversationId` y conserva el mensaje entrante más reciente. Los nuevos casos ingresan como **Por confirmar / Sin clasificar**. Los usuarios eligen prioridad: gerencia, equipo interno, contratistas. No se infiere jerarquía del remitente.
-- Conserva estados, notas, responsable y borradores manuales. Una nueva entrada marca la conversación para revisar. No cierra tareas por una respuesta ni elimina las tareas antiguas al vencer la ventana de 30 días.
-- El borrador de respuesta es editable. **No incluye un clasificador ni generador de respuestas con IA**; no determina automáticamente qué mensajes exigen respuesta. Tampoco envía correos, aprueba compras ni carga SAP.
-- Pagina hasta 100 páginas de 100 mensajes por consulta. Si falla una página, no incorpora parcialmente esa consulta ni adelanta el corte. Los errores de límite se muestran y requieren ajustar el proceso si el buzón supera ese volumen. Ante 429 vuelve a intentar en el ciclo siguiente; no hace reintentos inmediatos.
+Necesita Internet para consultar `login.microsoftonline.com` y `graph.microsoft.com`. Usa el proxy heredado y mantiene la verificación TLS. Las credenciales no se entregan al navegador.
 
-Para reproducir el agente original falta integrar un proceso de análisis autorizado que distinga pedidos, respuestas y evidencia de resolución; el PDF por sí solo no proporciona ese proceso. Esta base resuelve almacenamiento, consulta de correo y seguimiento manual sin importaciones recurrentes.
+## Funcionamiento
 
-## Datos y respaldo
+- Vistas de tablero/lista, búsqueda, prioridad, responsable, notas y borradores editables. La prioridad se elige manualmente: gerencia, equipo interno, contratistas.
+- Solo consulta **Bandeja de entrada** del buzón configurado. Primera consulta: últimos 30 días; luego desde el último éxito con cinco minutos de solapamiento. No lee enviados, adjuntos, subcarpetas ni mensajes movidos fuera de la bandeja antes de la consulta.
+- Consulta Outlook cada cinco minutos (configurable); el navegador consulta los cambios locales cada 15 segundos. También hay un botón de actualización. Es consulta periódica, no webhooks en tiempo real.
+- **Solo se actualiza con la computadora encendida, activa, conectada y la ventana del servidor abierta.** Al suspender/apagar el equipo o cerrar la ventana se detiene. Al reiniciar recupera desde el último corte exitoso, dentro de su alcance de Bandeja de entrada.
+- Agrupa por conversación y conserva el mensaje entrante más reciente. Los nuevos casos ingresan como **Por confirmar / Sin clasificar**. Una nueva entrada marca la conversación para revisar, conservando estados, responsables, notas y borradores anteriores.
+- No cierra tareas por una respuesta ni elimina pendientes antiguos. No envía borradores. **No incluye clasificación ni generación de respuestas mediante IA**.
+- Hasta 100 páginas de 100 mensajes por consulta. Un fallo no guarda resultados parciales ni adelanta el corte. Ante 429 reintenta en el ciclo siguiente; si supera el límite habrá que ajustar la sincronización.
 
-`DATA_DIR` (por defecto `./data`) contiene `hys.sqlite` y sus archivos WAL. Montá un volumen persistente al desplegar: el disco efímero de un contenedor perdería las tareas. Para respaldar con herramientas de archivos, detené **esta aplicación** y copiá el directorio completo; para respaldos sin detenerla usá la API de backup de SQLite. Guardá copias cifradas fuera de Git y verificá su recuperación. Eliminar un correo de Outlook no lo borra del tablero; la retención debe definirse antes de uso organizacional.
+Para migrar el seguimiento anterior hacen falta los JSON/Excel originales y un importador adaptado a su estructura: el PDF no contiene esos archivos. Después no se requieren cargas manuales de JSON para sincronizar.
 
-## Publicación privada
+## Datos, acceso y respaldo
 
-GitHub aloja el código. **GitHub Pages no ejecuta este servidor ni protege el acceso a correo corporativo**. Desplegá Node 24.10+ en un servicio privado con HTTPS y volumen persistente, o inicialmente ejecutalo en tu equipo.
+Las tareas se guardan en **`data/hys.sqlite`**, con los archivos auxiliares de SQLite, en la carpeta de la aplicación. Sobreviven al cierre y reinicio. No se suben a GitHub ni a un servidor de hosting. Eliminar un correo en Outlook no lo borra del tablero.
 
-La opción elegida para la nube es **Azure App Service con Microsoft Entra ID**. Ver [guía de despliegue privado](docs/azure.md). El servidor incluye autorización para tenant y usuarios explícitos mediante la identidad validada por App Service Authentication. La infraestructura Azure aún debe configurarse; no hay un sitio público ni una conexión real al buzón verificada.
+Para respaldar, cerrá el tablero y copiá la carpeta `data` completa a una ubicación protegida. Para restaurar, con el tablero detenido reemplazá esa carpeta por el respaldo. **Al actualizar el código conservá `.env` y `data`; no los borres ni sobrescribas al extraer una nueva versión.**
 
-- Para acceso remoto: `HOST=0.0.0.0`, `DASHBOARD_TOKEN` aleatorio de al menos 32 caracteres y `PUBLIC_ORIGIN` con el origen HTTPS exacto (sin barra final). La API requiere esa clave y el navegador la conserva solo durante la sesión de la pestaña.
-- La clave compartida es una protección básica para un prototipo personal. Para uso corporativo, usar el modo Entra descrito en la guía, restringir usuarios y red, agregar auditoría y acordar retención/respaldos con TI. No hay separación por usuario: quien accede ve el mismo buzón y tareas.
-- No exponer el puerto directamente a Internet sin HTTPS y controles privados. No subir correo, bases de datos, PDFs corporativos ni `.env` a GitHub. Los datos de la aplicación están excluidos mediante `.gitignore`.
-- En Windows instalá Node 24.10+ y usá `npm.cmd start` desde Símbolo del sistema si la política corporativa restringe scripts de PowerShell. No hace falta cambiar esa política.
+El servidor rechaza configuraciones para escuchar fuera de la interfaz local, incluso si se configura una clave. No acepta identidades de Azure como autenticación. No configures túneles, reenvíos o proxies para compartirlo. Otras aplicaciones de tu sesión pueden acceder al puerto; opcionalmente usá `DASHBOARD_TOKEN` para exigir una clave adicional.
+
+`.env` y `data` están excluidos de Git. No subas bases de datos ni correspondencia al repositorio.
 
 ## Variables
 
 | Variable | Uso |
 | --- | --- |
-| `HOST`, `PORT` | Por defecto `127.0.0.1`, `3000` |
-| `DATA_DIR` | Directorio persistente de SQLite |
-| `SYNC_INTERVAL_MINUTES` | Frecuencia de Outlook; por defecto 5 |
-| `MS_TENANT_ID`, `MS_CLIENT_ID` | Identificadores de la aplicación aprobada |
-| `MS_CLIENT_SECRET` | Secreto del servidor, nunca del navegador |
-| `MS_MAILBOX` | Correo del buzón autorizado |
-| `DASHBOARD_TOKEN` | Clave para el acceso al tablero |
-| `PUBLIC_ORIGIN` | Origen HTTPS detrás del proxy inverso |
+| `HOST` | Solo `127.0.0.1` (predeterminado), `localhost` o `::1` |
+| `PORT` | Por defecto `3000` |
+| `DATA_DIR` | Carpeta persistente; por defecto `./data` |
+| `SYNC_INTERVAL_MINUTES` | Frecuencia de Outlook; por defecto 5, mínimo 1 |
+| `MS_TENANT_ID`, `MS_CLIENT_ID` | Identificadores aprobados por TI |
+| `MS_CLIENT_SECRET` | Secreto local para lectura autorizada del correo |
+| `MS_MAILBOX` | Buzón autorizado |
+| `DASHBOARD_TOKEN` | Clave adicional opcional para el tablero local |
 
-## Validación
+Las antiguas `AUTH_MODE`, `ALLOWED_USER_EMAILS` y `PUBLIC_ORIGIN` de Azure ya no se utilizan y se pueden quitar de un `.env` previo.
 
-`npm test` usa Microsoft Graph simulado y una base temporal, sin consultar correos reales. La conexión real requiere configuración y una consulta exitosa; tener las variables presentes no prueba acceso. El estado de la interfaz informa último éxito y último error por separado. El código no solicita ni guarda permisos de envío.
+## Desarrollo y validación
+
+Desde la carpeta del proyecto, `npm start` inicia el servidor, `npm run desktop` también abre el navegador y `npm test` ejecuta las pruebas. Usá solo un servidor a la vez. En Windows podés usar `npm.cmd` desde Símbolo del sistema si la política restringe scripts de PowerShell.
+
+En tareas de desarrollo en la nube usá el checkout existente `/workspace/Test1`; cada tarea ya está aislada, no crees worktrees salvo pedido explícito. Esto no implica desplegar el tablero en la nube.
+
+Las pruebas usan Graph simulado y bases temporales, sin leer correo real. La conexión a Outlook solo está verificada tras una consulta real exitosa. La validación en Linux no reemplaza una prueba del lanzador `.cmd` en tu Windows.

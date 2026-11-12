@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { once } from 'node:events';
 import { spawn } from 'node:child_process';
+import http from 'node:http';
 import { Store } from '../src/store.js';
 import { synchronize } from '../src/graph.js';
 
@@ -102,6 +103,25 @@ test('HTTP workflow protects records, validates edits and reports missing Graph 
   assert.equal((await fetch(`${base}/api/tasks/http`, { method: 'PATCH', headers, body: JSON.stringify({ status: 'inventado' }) })).status, 400);
   assert.equal((await fetch(`${base}/api/tasks/http`, { method: 'PATCH', headers, body: '{' })).status, 400);
   assert.equal((await fetch(`${base}/api/state`, { headers: { ...headers, Origin: 'https://foreign.invalid' } })).status, 403);
+  const foreignHost = await new Promise((resolve, reject) => {
+    const request = http.get(`${base}/api/state`, { headers: { ...headers, Host: 'foreign.invalid' } }, response => { response.resume(); resolve(response.statusCode); });
+    request.on('error', reject);
+  });
+  assert.equal(foreignHost, 403);
+  assert.equal((await fetch(`${base}/api/state`, { headers: { ...headers, 'Sec-Fetch-Site': 'cross-site' } })).status, 403);
   const final = await (await fetch(`${base}/api/state`, { headers })).json(); assert.equal(final.tasks[0].notes, 'Guardado');
   const page = await fetch(base); assert.match(await page.text(), /Pendientes H&S/); assert.match(page.headers.get('content-security-policy'), /frame-ancestors 'none'/);
+});
+
+test('local-only server rejects remote bindings even with credentials configured', async () => {
+  for (const host of ['0.0.0.0', '::', '192.168.1.10']) {
+    const child = spawn(process.execPath, ['src/server.js'], {
+      cwd: new URL('..', import.meta.url),
+      env: { ...process.env, HOST: host, DASHBOARD_TOKEN: 'a'.repeat(32), AUTH_MODE: 'azure-easyauth', MS_TENANT_ID: 'tenant', PUBLIC_ORIGIN: 'https://example.invalid', ALLOWED_USER_EMAILS: 'user@example.com' },
+      stdio: ['ignore', 'ignore', 'pipe']
+    });
+    let error = ''; child.stderr.on('data', chunk => { error += chunk; });
+    const [code] = await once(child, 'exit');
+    assert.equal(code, 1); assert.match(error, /Este tablero es solo local/);
+  }
 });

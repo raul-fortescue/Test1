@@ -69,9 +69,9 @@ async function refresh() {
     state = await api('/api/state');
     $('sync').disabled = !state.configured || state.syncing;
     $('freshness').textContent = state.lastSync ? `Última sincronización: ${date(state.lastSync)} (Argentina) · Consulta automática cada ${state.intervalMinutes} minutos` : 'Sin sincronización de Outlook verificada';
-    if (!state.configured) notice('Conexión pendiente: configurá Microsoft 365 en el servidor. No se muestran datos de ejemplo ni registros reconstruidos del PDF.');
+    if (!state.configured) notice('Conexión con Outlook pendiente: completá la configuración local de Microsoft 365. Tus datos se guardan en este equipo.');
     else if (state.lastError) notice(state.lastError, true);
-    else notice(state.syncing ? 'Consultando Outlook…' : 'Los cambios se guardan en el servidor. Los correos se incorporan como casos por confirmar.');
+    else notice(state.syncing ? 'Consultando Outlook…' : 'Los cambios se guardan en este equipo. Los correos se incorporan como casos por confirmar.');
     render();
   } catch (error) { notice(error.message, true); }
   finally { refreshing = false; }

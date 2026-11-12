@@ -8,11 +8,7 @@ import { synchronize, missingSettings } from './graph.js';
 const env = process.env;
 const host = env.HOST || '127.0.0.1';
 const port = Number(env.PORT || 3000);
-const token = env.DASHBOARD_TOKEN || '';
-const easyAuth = env.AUTH_MODE === 'azure-easyauth';
-if (env.AUTH_MODE && !['azure-easyauth', 'local'].includes(env.AUTH_MODE)) throw new Error('AUTH_MODE no válido.');
-if (easyAuth && (!env.MS_TENANT_ID || !env.ALLOWED_USER_EMAILS || !env.PUBLIC_ORIGIN)) throw new Error('Azure requiere MS_TENANT_ID, ALLOWED_USER_EMAILS y PUBLIC_ORIGIN.');
-if (!easyAuth && !['127.0.0.1', '::1', 'localhost'].includes(host) && token.length < 32) throw new Error('El acceso remoto requiere DASHBOARD_TOKEN de al menos 32 caracteres.');
+if (!['127.0.0.1', '::1', 'localhost'].includes(host)) throw new Error('Este tablero es solo local. HOST debe ser 127.0.0.1, ::1 o localhost.');
 const interval = Number(env.SYNC_INTERVAL_MINUTES || 5);
 if (!Number.isFinite(interval) || interval < 1) throw new Error('SYNC_INTERVAL_MINUTES debe ser un número mayor o igual a 1.');
 const store = new Store(env.DATA_DIR || './data');
@@ -49,13 +45,13 @@ const server = http.createServer(async (req, res) => {
   try {
     const base = `http://${req.headers.host}`;
     const path = new URL(req.url, base).pathname;
-    const origin = env.PUBLIC_ORIGIN || new URL(base).origin;
+    const origin = new URL(base).origin;
     if (req.headers.origin && req.headers.origin !== origin) return send(403, { error: 'Origen no permitido.' });
     // Block cross-site browser requests even for the unauthenticated loopback workflow.
     if (req.headers['sec-fetch-site'] === 'cross-site') return send(403, { error: 'Origen no permitido.' });
     const hostname = new URL(base).hostname;
-    if (!token && !easyAuth && !['127.0.0.1', 'localhost', '[::1]'].includes(hostname)) return send(403, { error: 'Host no permitido.' });
-    if (path.startsWith('/api/') && !authorized(req, env)) return send(easyAuth ? 403 : 401, { error: easyAuth ? 'Tu cuenta de Microsoft 365 no está autorizada para este tablero.' : 'Ingresá la clave de acceso al tablero.' });
+    if (!['127.0.0.1', 'localhost', '[::1]'].includes(hostname)) return send(403, { error: 'Host no permitido.' });
+    if (path.startsWith('/api/') && !authorized(req, env)) return send(401, { error: 'Ingresá la clave de acceso al tablero.' });
     if (req.method === 'GET' && path === '/api/state') return send(200, {
       tasks: store.list(), lastSync: store.meta('lastSync'), syncing: !!syncing, lastError,
       configured: missingSettings(env).length === 0, missingSettings: missingSettings(env), intervalMinutes: interval
